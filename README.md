@@ -1,13 +1,6 @@
 🧠 MindPatch
 A Digital Detox & Student Wellness Planner
 
-Course: Critical & Creative Thinking
-CRS: Artificial Intelligence
-School: Ryan Global School, Kharghar
-
-Student: Prakhar Kapil Sharma
-Candidate Registration No.: 1000260
-
 🔗 GitHub Repository:
 https://github.com/prakharsharma-cpu/Critical-and-Creative-Thinking-SA/tree/main
 
