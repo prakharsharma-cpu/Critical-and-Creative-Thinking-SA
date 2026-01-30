@@ -1,6 +1,9 @@
 import streamlit as st
-from datetime import date
+from datetime import date, timedelta
 import time
+import pandas as pd
+import plotly.express as px
+import random # Used to simulate history data for the demo
 
 # ---------------- PAGE CONFIG ----------------
 st.set_page_config(
@@ -12,14 +15,10 @@ st.set_page_config(
 # ---------------- CUSTOM CSS ----------------
 st.markdown("""
 <style>
-    /* Global Styles */
     body { background-color: #F6F7FB; }
     .main { background-color: #F6F7FB; }
-    
-    /* Headings */
     h1, h2, h3 { color: #3B3B98; font-family: 'Helvetica Neue', sans-serif; }
     
-    /* Card Container */
     .card {
         background: white;
         padding: 2rem;
@@ -29,238 +28,227 @@ st.markdown("""
         border: 1px solid #EEF2FF;
     }
     
-    /* Badge Styles */
-    .badge {
-        display: inline-block;
-        padding: 6px 14px;
-        background: #E0E7FF;
-        color: #312E81;
-        border-radius: 999px;
-        font-size: 14px;
-        font-weight: 600;
-        margin: 4px 6px 4px 0;
-    }
-    
-    /* Metric Styling */
-    div[data-testid="metric-container"] {
-        background-color: #ffffff;
-        padding: 10px;
-        border-radius: 10px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    /* Smooth transition for charts */
+    .js-plotly-plot {
+        border-radius: 12px;
+        overflow: hidden;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- SESSION STATE INITIALIZATION ----------------
+# ---------------- SESSION STATE ----------------
 if "mood" not in st.session_state:
     st.session_state.mood = 3
-
-if "screen_time" not in st.session_state:
-    st.session_state.screen_time = 0.0
-
 if "gratitude" not in st.session_state:
     st.session_state.gratitude = []
-
 if "streak" not in st.session_state:
     st.session_state.streak = 0
-
 if "habit_log" not in st.session_state:
-    st.session_state.habit_log = set() # Using a set to store dates
+    st.session_state.habit_log = set()
+
+# Initialize breakdown for Pie Chart
+if "time_social" not in st.session_state: st.session_state.time_social = 2.0
+if "time_study" not in st.session_state: st.session_state.time_study = 4.0
+if "time_ent" not in st.session_state: st.session_state.time_ent = 1.5
 
 # ---------------- HEADER ----------------
 st.title("🧠 MindPatch")
-st.markdown("**Digital Detox & Wellness Planner**")
-st.caption("A functional prototype for student mental wellness.")
+st.caption("Visualizing your digital habits for better mental health.")
 
 # ---------------- NAVIGATION ----------------
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "😊 Mood", 
-    "📱 Screen Time", 
+    "😊 Mood Trends", 
+    "📊 Screen Analysis", 
     "🤖 AI Planner", 
     "📔 Gratitude", 
     "🏆 Habits"
 ])
 
-# ================= TAB 1: MOOD LOGGING =================
+# ================= TAB 1: MOOD LOGGING & TRENDS =================
 with tab1:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.header("How are you feeling?")
     
-    col1, col2 = st.columns([3, 1])
+    col1, col2 = st.columns([1, 2])
     
     with col1:
-        # Fixed syntax error here: added commas
-        st.session_state.mood = st.slider(
-            "Select your mood level:",
-            min_value=1,
-            max_value=5,
-            value=st.session_state.mood
+        st.subheader("Today's Mood")
+        st.session_state.mood = st.select_slider(
+            "How do you feel?",
+            options=[1, 2, 3, 4, 5],
+            value=st.session_state.mood,
+            format_func=lambda x: {1:"😞", 2:"😕", 3:"😐", 4:"🙂", 5:"😄"}[x]
         )
+        
+        mood_labels = {1:"Rough", 2:"Low", 3:"Okay", 4:"Good", 5:"Awesome"}
+        st.caption(f"Status: **{mood_labels[st.session_state.mood]}**")
 
-    mood_map = {
-        1: ("😞 Very Low", "It's okay to have bad days."),
-        2: ("😕 Low", "Be gentle with yourself."),
-        3: ("😐 Neutral", "Taking it one step at a time."),
-        4: ("🙂 Good", "Glad to hear you're doing well!"),
-        5: ("😄 Great", "Keep up that positive energy!")
-    }
-    
-    current_mood, message = mood_map[st.session_state.mood]
-    
     with col2:
-        st.metric(label="Current Mood", value=current_mood.split(" ")[0])
+        st.subheader("Weekly Trend")
+        # GENERATE DUMMY DATA FOR VISUALIZATION PURPOSES
+        # In a real app, this would come from a database
+        dates = [date.today() - timedelta(days=i) for i in range(6, -1, -1)]
+        # Make the last data point match the user's current input
+        mood_data = [random.randint(2, 5) for _ in range(6)] + [st.session_state.mood]
+        
+        df_mood = pd.DataFrame({"Date": dates, "Mood": mood_data})
+        
+        fig_mood = px.line(
+            df_mood, x="Date", y="Mood", 
+            markers=True, 
+            line_shape="spline", # Makes line curved/smooth
+            range_y=[0.5, 5.5]
+        )
+        fig_mood.update_layout(
+            margin=dict(l=20, r=20, t=10, b=20),
+            height=200,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
+        )
+        st.plotly_chart(fig_mood, use_container_width=True)
 
-    st.info(f"**{current_mood}** — {message}")
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ================= TAB 2: SCREEN TIME =================
+# ================= TAB 2: SCREEN TIME (PIE CHART) =================
 with tab2:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.header("Screen-Time Dashboard")
+    st.header("Screen Time Breakdown")
     
-    col1, col2 = st.columns(2)
+    # UX Improvement: Sliders for categorization instead of one big number
+    col_input, col_viz = st.columns([1, 1])
     
-    with col1:
-        st.session_state.screen_time = st.number_input(
-            "Hours spent on screens today:",
-            min_value=0.0,
-            max_value=24.0,
-            step=0.5,
-            value=st.session_state.screen_time
-        )
-    
-    # Logic for progress bar color
-    usage_ratio = min(st.session_state.screen_time / 12, 1.0) # Assume 12h is max for bar
-    
-    if st.session_state.screen_time <= 2:
-        status_color = "green"
-        msg = "Healthy usage 🌿"
-    elif st.session_state.screen_time <= 5:
-        status_color = "orange"
-        msg = "Moderate usage ⚠️"
-    else:
-        status_color = "red"
-        msg = "High screen exposure 🚨"
-
-    with col2:
-        st.markdown(f"**Status:** {msg}")
-        st.progress(usage_ratio)
+    with col_input:
+        st.write("**Where did your time go?**")
+        st.session_state.time_study = st.slider("📚 Productivity / Study", 0.0, 12.0, st.session_state.time_study, 0.5)
+        st.session_state.time_social = st.slider("📱 Social Media", 0.0, 12.0, st.session_state.time_social, 0.5)
+        st.session_state.time_ent = st.slider("🎮 Games / Movies", 0.0, 12.0, st.session_state.time_ent, 0.5)
         
+        total_screen_time = st.session_state.time_study + st.session_state.time_social + st.session_state.time_ent
+
+    with col_viz:
+        # Create Data for Pie Chart
+        df_screen = pd.DataFrame({
+            "Category": ["Productivity", "Social Media", "Entertainment"],
+            "Hours": [st.session_state.time_study, st.session_state.time_social, st.session_state.time_ent]
+        })
+        
+        # Donut Chart (Better UX than Pie)
+        fig_pie = px.pie(
+            df_screen, 
+            values='Hours', 
+            names='Category',
+            hole=0.5, # Makes it a donut
+            color_discrete_sequence=px.colors.qualitative.Pastel
+        )
+        fig_pie.update_layout(
+            margin=dict(l=20, r=20, t=0, b=20),
+            height=250,
+            showlegend=False # Cleaner look, labels are on hover
+        )
+        # Only show chart if there is data
+        if total_screen_time > 0:
+            st.plotly_chart(fig_pie, use_container_width=True)
+        else:
+            st.info("Log your hours to see the breakdown.")
+
+    # Status Bar
+    st.divider()
+    st.metric("Total Screen Time", f"{total_screen_time} Hours")
+    
+    if total_screen_time > 8:
+        st.error("🚨 High Usage Detected")
+    elif total_screen_time > 5:
+        st.warning("⚠️ Moderate Usage")
+    else:
+        st.success("🌿 Healthy Balance")
+
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ================= TAB 3: AI DETOX PLANNER =================
+# ================= TAB 3: AI PLANNER =================
 with tab3:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.header("AI Detox Planner")
-    st.markdown("Based on your **Mood** and **Screen Time**, here is your suggested plan:")
     
-    mood = st.session_state.mood
-    screen = st.session_state.screen_time
-    
-    # Simulating AI processing
-    with st.spinner("Analyzing your wellness data..."):
-        time.sleep(0.5) # Cosmetic delay for "AI feel"
-    
-    if mood <= 2 and screen > 4:
-        suggestion = "🧘 **Deep Reset:** Take a 20-minute phone-free break. Try the 4-7-8 breathing technique."
-        reason = "High screen time combined with low mood can lead to digital burnout."
-    elif mood <= 3 and screen > 3:
-        suggestion = "🚶 **Nature Walk:** Go for a 15-minute walk without your phone."
-        reason = "Movement and fresh air are proven to boost serotonin levels."
-    elif mood >= 4 and screen <= 3:
-        suggestion = "🎨 **Creative Flow:** You are in a good spot! Use this energy to read, draw, or cook."
-        reason = "Maintaining low screen time preserves your current positive momentum."
-    else:
-        suggestion = "📖 **Mindful Journaling:** Spend 10 minutes writing down your thoughts."
-        reason = "A neutral activity helps recalibrate your focus."
+    # Logic based on the categorization from Tab 2
+    social_ratio = 0
+    if total_screen_time > 0:
+        social_ratio = st.session_state.time_social / total_screen_time
 
-    st.success(suggestion)
-    with st.expander("Why this suggestion?"):
-        st.write(reason)
+    if total_screen_time > 6 and social_ratio > 0.5:
+        st.info("💡 **Insight:** Over 50% of your time was on Social Media.")
+        st.markdown("### 🧘 Recommendation: The 'Grey Scale' Challenge")
+        st.write("Turn your phone to Grayscale mode for the next 2 hours. This reduces dopamine triggers from colorful icons.")
+    
+    elif st.session_state.mood <= 2:
+        st.info("💡 **Insight:** Mood is low today.")
+        st.markdown("### 🌲 Recommendation: Nature Reset")
+        st.write("Leave your phone in your room. Step outside for 10 minutes. Look at the sky.")
         
+    elif st.session_state.time_study > 5:
+        st.success("💡 **Insight:** High productivity detected!")
+        st.markdown("### 🧠 Recommendation: Deep Rest")
+        st.write("You've worked hard. Your brain needs passive rest. Listen to instrumental music with eyes closed.")
+        
+    else:
+        st.markdown("### ✨ Recommendation: Maintain Balance")
+        st.write("You are doing well. Maybe read a physical book for 15 minutes?")
+
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ================= TAB 4: GRATITUDE JOURNAL =================
+# ================= TAB 4: GRATITUDE =================
 with tab4:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.header("Gratitude Journal")
+    st.header("Gratitude Jar")
     
-    # Using a Form ensures the text box clears after submission
-    with st.form(key='gratitude_form', clear_on_submit=True):
-        entry_text = st.text_area("What are you grateful for today?", height=100)
-        submit_button = st.form_submit_button(label='Save Entry')
-        
-        if submit_button and entry_text:
-            st.session_state.gratitude.append(f"{date.today()} • {entry_text}")
-            st.toast("Saved successfully! 💙")
+    with st.form("gratitude"):
+        txt = st.text_input("I am grateful for...", placeholder="e.g., The warm coffee this morning")
+        submitted = st.form_submit_button("Add Note")
+        if submitted and txt:
+            st.session_state.gratitude.append(f"{date.today()}: {txt}")
+            st.success("Added to jar!")
             
     st.divider()
     
-    st.subheader("Recent Entries")
-    if not st.session_state.gratitude:
-        st.caption("No entries yet. Start writing above!")
-    else:
-        for g in reversed(st.session_state.gratitude[-5:]):
-            st.markdown(f"✨ {g}")
-
+    # UX Improvement: Expander for history to keep UI clean
+    with st.expander("📖 Read previous entries", expanded=True):
+        if st.session_state.gratitude:
+            for g in reversed(st.session_state.gratitude):
+                st.text(g)
+        else:
+            st.caption("Your jar is empty. Add your first note!")
+            
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ================= TAB 5: HABIT TRACKER =================
+# ================= TAB 5: HABITS =================
 with tab5:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.header("Habit Tracker")
+    st.header("Streak Tracker")
     
-    today = date.today()
+    col_a, col_b = st.columns([2,1])
     
-    # Check if today is already in the log
-    is_done_today = today in st.session_state.habit_log
-    
-    st.markdown("### 🎯 Daily Goal: Take a 1-hour screen-free break")
-    
-    # Callback logic for the checkbox
-    def toggle_habit():
-        if today in st.session_state.habit_log:
-            st.session_state.habit_log.remove(today)
-            st.session_state.streak = max(0, st.session_state.streak - 1)
-        else:
-            st.session_state.habit_log.add(today)
-            st.session_state.streak += 1
-            st.balloons()
-
-    checked = st.checkbox(
-        "I completed my break today", 
-        value=is_done_today,
-        on_change=toggle_habit
-    )
-    
-    st.divider()
-    
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Current Streak", f"{st.session_state.streak} Days")
-    
-    st.subheader("Your Badges")
-    
-    badges = []
-    if st.session_state.streak >= 3:
-        badges.append("🥉 Bronze Mindful")
-    if st.session_state.streak >= 5:
-        badges.append("🥈 Silver Balance")
-    if st.session_state.streak >= 7:
-        badges.append("🥇 Gold Wellness")
+    with col_a:
+        st.write("### 🔥 Current Streak: " + str(st.session_state.streak))
         
-    if badges:
-        for b in badges:
-            st.markdown(f"<span class='badge'>{b}</span>", unsafe_allow_html=True)
-    else:
-        st.caption("Hit a 3-day streak to earn your first badge!")
+        # Simple progress bar to next badge
+        next_goal = 3
+        if st.session_state.streak >= 3: next_goal = 7
+        if st.session_state.streak >= 7: next_goal = 14
+        
+        progress = min(st.session_state.streak / next_goal, 1.0)
+        st.progress(progress)
+        st.caption(f"Goal: {next_goal} days")
+
+    with col_b:
+        today = date.today()
+        # Logic to toggle check
+        def toggle():
+            if today in st.session_state.habit_log:
+                st.session_state.habit_log.remove(today)
+                st.session_state.streak -= 1
+            else:
+                st.session_state.habit_log.add(today)
+                st.session_state.streak += 1
+                st.balloons()
+        
+        st.checkbox("Log Daily Detox", value=(today in st.session_state.habit_log), on_change=toggle)
 
     st.markdown("</div>", unsafe_allow_html=True)
-
-# ---------------- FOOTER ----------------
-st.markdown("---")
-st.markdown(
-    "<div style='text-align: center; color: grey;'>"
-    "MindPatch • Built with Streamlit • Prioritizing Digital Wellness"
-    "</div>", 
-    unsafe_allow_html=True
-)
