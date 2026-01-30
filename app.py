@@ -37,6 +37,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------- SESSION STATE ----------------
+# Initialize variables if they don't exist
 if "mood" not in st.session_state:
     st.session_state.mood = 3
 if "gratitude" not in st.session_state:
@@ -72,6 +73,7 @@ with tab1:
     
     with col1:
         st.subheader("Today's Mood")
+        # Direct assignment to session_state variable
         st.session_state.mood = st.select_slider(
             "How do you feel?",
             options=[1, 2, 3, 4, 5],
@@ -85,7 +87,6 @@ with tab1:
     with col2:
         st.subheader("Weekly Trend")
         # GENERATE DUMMY DATA FOR VISUALIZATION PURPOSES
-        # In a real app, this would come from a database
         dates = [date.today() - timedelta(days=i) for i in range(6, -1, -1)]
         # Make the last data point match the user's current input
         mood_data = [random.randint(2, 5) for _ in range(6)] + [st.session_state.mood]
@@ -113,7 +114,6 @@ with tab2:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.header("Screen Time Breakdown")
     
-    # UX Improvement: Sliders for categorization instead of one big number
     col_input, col_viz = st.columns([1, 1])
     
     with col_input:
@@ -131,26 +131,25 @@ with tab2:
             "Hours": [st.session_state.time_study, st.session_state.time_social, st.session_state.time_ent]
         })
         
-        # Donut Chart (Better UX than Pie)
+        # Donut Chart
         fig_pie = px.pie(
             df_screen, 
             values='Hours', 
             names='Category',
-            hole=0.5, # Makes it a donut
+            hole=0.5, 
             color_discrete_sequence=px.colors.qualitative.Pastel
         )
         fig_pie.update_layout(
             margin=dict(l=20, r=20, t=0, b=20),
             height=250,
-            showlegend=False # Cleaner look, labels are on hover
+            showlegend=False
         )
-        # Only show chart if there is data
+        
         if total_screen_time > 0:
             st.plotly_chart(fig_pie, use_container_width=True)
         else:
             st.info("Log your hours to see the breakdown.")
 
-    # Status Bar
     st.divider()
     st.metric("Total Screen Time", f"{total_screen_time} Hours")
     
@@ -168,25 +167,25 @@ with tab3:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.header("AI Detox Planner")
     
-    # Logic based on the categorization from Tab 2
     social_ratio = 0
     if total_screen_time > 0:
         social_ratio = st.session_state.time_social / total_screen_time
 
+    # AI Logic Rules
     if total_screen_time > 6 and social_ratio > 0.5:
         st.info("💡 **Insight:** Over 50% of your time was on Social Media.")
         st.markdown("### 🧘 Recommendation: The 'Grey Scale' Challenge")
-        st.write("Turn your phone to Grayscale mode for the next 2 hours. This reduces dopamine triggers from colorful icons.")
+        st.write("Turn your phone to Grayscale mode for the next 2 hours. This reduces dopamine triggers.")
     
     elif st.session_state.mood <= 2:
         st.info("💡 **Insight:** Mood is low today.")
         st.markdown("### 🌲 Recommendation: Nature Reset")
-        st.write("Leave your phone in your room. Step outside for 10 minutes. Look at the sky.")
+        st.write("Leave your phone in your room. Step outside for 10 minutes.")
         
     elif st.session_state.time_study > 5:
         st.success("💡 **Insight:** High productivity detected!")
         st.markdown("### 🧠 Recommendation: Deep Rest")
-        st.write("You've worked hard. Your brain needs passive rest. Listen to instrumental music with eyes closed.")
+        st.write("You've worked hard. Listen to instrumental music with eyes closed.")
         
     else:
         st.markdown("### ✨ Recommendation: Maintain Balance")
@@ -199,16 +198,17 @@ with tab4:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.header("Gratitude Jar")
     
-    with st.form("gratitude"):
+    # FIX: Renamed the form key to avoid conflict with st.session_state.gratitude list
+    with st.form("gratitude_form_key", clear_on_submit=True):
         txt = st.text_input("I am grateful for...", placeholder="e.g., The warm coffee this morning")
         submitted = st.form_submit_button("Add Note")
+        
         if submitted and txt:
             st.session_state.gratitude.append(f"{date.today()}: {txt}")
             st.success("Added to jar!")
             
     st.divider()
     
-    # UX Improvement: Expander for history to keep UI clean
     with st.expander("📖 Read previous entries", expanded=True):
         if st.session_state.gratitude:
             for g in reversed(st.session_state.gratitude):
@@ -228,7 +228,6 @@ with tab5:
     with col_a:
         st.write("### 🔥 Current Streak: " + str(st.session_state.streak))
         
-        # Simple progress bar to next badge
         next_goal = 3
         if st.session_state.streak >= 3: next_goal = 7
         if st.session_state.streak >= 7: next_goal = 14
